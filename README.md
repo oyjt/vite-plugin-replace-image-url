@@ -65,7 +65,7 @@ export default {
       publicPath: VITE_CDN_URL,
       sourceDir: path.resolve(__dirname, './src/static'),
       include: ['**/*.svg', '**/*.png', '**/*.jp(e)?g', '**/*.gif', '**/*.webp'],
-      exclude: ['logo.png'],
+      exclude: ['**/logo.png'],
       verbose: true,
     }
   )],

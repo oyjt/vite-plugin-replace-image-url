@@ -1,7 +1,7 @@
 {
   "name": "vite-plugin-replace-image-url",
   "type": "module",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A vite plugin which replace images url.",
   "license": "MIT",
   "author": "cnpath (https://github.com/oyjt)",
