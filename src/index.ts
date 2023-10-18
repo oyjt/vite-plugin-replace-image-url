@@ -1,9 +1,9 @@
 import path from "node:path";
 import { createFilter } from '@rollup/pluginutils';
-import type { PluginOption } from "vite";
+import type { Plugin } from "vite";
 import type { ConfigOptions } from "./typing";
 
-const replaceImageUrl = (_opt: ConfigOptions): PluginOption => {
+const replaceImageUrl = (_opt: ConfigOptions): Plugin => {
   const options = Object.assign(
     {
       publicPath: "",
