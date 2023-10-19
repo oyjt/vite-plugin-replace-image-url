@@ -1,5 +1,5 @@
 import path from "node:path";
-import { createFilter } from '@rollup/pluginutils';
+import { createFilter, normalizePath } from 'vite';
 import type { Plugin } from "vite";
 import type { ConfigOptions } from "./typing";
 
@@ -21,9 +21,9 @@ const replaceImageUrl = (_opt: ConfigOptions): Plugin => {
     apply: 'build',
     load(id) {
       if (!filter(id)) return null;
-      const name = path.basename(id);
-      const relativeDir = path.relative(options.sourceDir, path.dirname(id));
-      const outputFileName = `${options.publicPath}/${relativeDir}/${name}`;
+      const normalizedId = normalizePath(path.relative(options.sourceDir, id));
+      // console.log('[ normalizedId ] >', normalizedId);
+      const outputFileName = `${options.publicPath}/${normalizedId}`;
       if (options.verbose) {
         console.log('replace image url:', outputFileName);
       }
