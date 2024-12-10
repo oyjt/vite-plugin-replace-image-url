@@ -20,7 +20,7 @@ const replaceImageUrl = (_opt: ConfigOptions): Plugin => {
     enforce: 'pre',
     apply: 'build',
     load(id) {
-      if (!filter(id)) return null;
+      if (!filter(id)) return;
       const normalizedId = normalizePath(path.relative(options.sourceDir, id));
       // console.log('[ normalizedId ] >', normalizedId);
       const outputFileName = `${options.publicPath}/${normalizedId}`;
