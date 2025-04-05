@@ -1,7 +1,7 @@
 {
   "name": "vite-plugin-replace-image-url",
   "type": "module",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "A vite plugin which replace images url.",
   "license": "MIT",
   "author": "cnpath (https://github.com/oyjt)",
@@ -36,7 +36,7 @@
     "stub": "unbuild --stub"
   },
   "peerDependencies": {
-    "vite": "^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0"
+    "vite": ">=3.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.8.6",
