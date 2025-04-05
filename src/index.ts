@@ -11,7 +11,7 @@ const defaultOptions: ConfigOptions = {
   verbose: false,
 };
 
-const replaceImageUrl = (_opt: ConfigOptions): Plugin => {
+const replaceImageUrl = (_opt: Partial<ConfigOptions> = {}): Plugin => {
   const options = { ...defaultOptions, ..._opt };
   const filter = createFilter(options.include, options.exclude);
   return {
