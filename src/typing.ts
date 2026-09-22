@@ -1,32 +1,38 @@
 export interface ConfigOptions {
   /**
-   * A path which added in front of filenames.
-   * 
-   * default: (empty string)
+   * A path or URL added before each image path.
+   *
+   * @default ""
    */
-  publicPath: string;
+  publicPath?: string;
   /**
-   * The path where the picture is located.
-   * 
-   * default: "src/static"
+   * Directory containing the images to replace. Relative paths are resolved
+   * from Vite's root.
+   *
+   * @default "src/static"
    */
-  sourceDir: string;
+  sourceDir?: string;
   /**
-   * A picomatch pattern, or array of patterns, which specifies the files in the build the plugin should operate on.
-   * 
-   * ['**\/*.svg', '**\/*.png', '**\/*.jp(e)?g', '**\/*.gif', '**\/*.webp']
+   * Picomatch patterns selecting SVG, PNG, JPEG, GIF, WebP and AVIF files
+   * inside sourceDir.
    */
   include?: string | string[];
   /**
-   * A picomatch pattern, or array of patterns, which specifies the files in the build the plugin should ignore. 
-   * 
-   * default: []
+   * Picomatch patterns excluding image files.
+   *
+   * @default []
    */
   exclude?: string | string[];
   /**
-   * Write logs to console
+   * Log a summary of replaced image URLs.
    *
-   * default: false
+   * @default false
    */
   verbose?: boolean;
+  /**
+   * Disable all plugin logs, including errors. Takes precedence over verbose.
+   *
+   * @default false
+   */
+  silent?: boolean;
 }

@@ -1,8 +1,8 @@
 {
   "name": "vite-plugin-replace-image-url",
   "type": "module",
-  "version": "1.4.1",
-  "description": "A vite plugin which replace images url.",
+  "version": "2.0.0",
+  "description": "A Vite plugin that replaces imported image URLs with external URLs at build time.",
   "license": "MIT",
   "author": "cnpath (https://github.com/oyjt)",
   "homepage": "https://github.com/oyjt/vite-plugin-replace-image-url",
@@ -21,27 +21,32 @@
     "README_CN.md",
     "LICENSE"
   ],
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
+      "import": "./dist/index.mjs"
     }
   },
-  "main": "./dist/index.cjs",
+  "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "unbuild",
-    "stub": "unbuild --stub"
+    "stub": "unbuild --stub",
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm build && node --test test/build.test.mjs"
   },
   "peerDependencies": {
     "vite": ">=3.0.0"
   },
   "devDependencies": {
-    "@types/node": "^20.8.6",
+    "@types/node": "^22.12.0",
     "typescript": "^5.1.3",
     "unbuild": "^2.0.0",
-    "vite": "^5.4.11"
+    "vite": "^8.3.0"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
