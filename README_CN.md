@@ -48,7 +48,7 @@ https://cdn.example.com/images/icons/logo.png
 | `exclude` | `string \| string[]` | `[]` | 排除的图片规则 |
 | `verbose` | `boolean` | `false` | 输出已替换图片 URL 汇总 |
 
-只有 `sourceDir` 内的文件会被替换。支持 `?url`，显式使用 `?raw` 或 `?inline` 时保留 Vite 原生行为。
+只有 `sourceDir` 内的文件会被替换。支持 `?url`，显式使用 `?raw` 或 `?inline` 时保留 Vite 原生行为。目标前缀支持 `./images`、`../images` 等相对路径；HTML `src`/`poster` 属性和 CSS `url()` 中的相对图片引用也会被替换。
 
 ```js
 ReplaceImageUrl({
