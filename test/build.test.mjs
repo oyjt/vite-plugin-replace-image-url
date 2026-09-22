@@ -40,7 +40,8 @@ async function bundle(root, plugin, customLogger) {
   const outputs = Array.isArray(result) ? result : [result];
   return outputs
     .flatMap(output => output.output)
-    .find(output => output.type === "chunk" && output.isEntry)?.code ?? "";
+    .map(output => output.type === "chunk" ? output.code : String(output.source))
+    .join("\n");
 }
 
 const mockLogger = t => {
@@ -72,6 +73,33 @@ console.log(logo, outside, inline);`,
   assert.match(code, /https:\/\/cdn\.example\.com\/images\/nested\/logo\.png/);
   assert.doesNotMatch(code, /cdn\.example\.com.*outside\.png/);
   assert.match(code, /data:image\/png;base64/);
+});
+
+test("supports relative output URLs in imports and source references", async t => {
+  const root = await fixture(
+    t,
+    'import "./styles.css";',
+  );
+  await writeFile(
+    path.join(root, "index.html"),
+    '<img src="./src/static/nested/logo.png">' +
+      '<script type="module" src="/src/main.js"></script>',
+  );
+  await writeFile(
+    path.join(root, "src/styles.css"),
+    'body { background: url("./static/nested/logo.png"); }',
+  );
+
+  const output = await bundle(
+    root,
+    ReplaceImageUrl({ publicPath: "../images" }),
+  );
+
+  assert.equal(
+    output.match(/\.\.\/images\/nested\/logo\.png/g)?.length,
+    2,
+  );
+  assert.doesNotMatch(output, /vite-plugin-replace-image-url\.invalid/);
 });
 
 test("supports custom sourceDir, filters, and safe JavaScript output", async t => {
