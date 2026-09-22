@@ -13,9 +13,8 @@ export interface ConfigOptions {
    */
   sourceDir?: string;
   /**
-   * Picomatch patterns selecting image files inside sourceDir.
-   *
-   * @default ["**/*.{svg,png,jpg,jpeg,gif,webp,avif}"]
+   * Picomatch patterns selecting SVG, PNG, JPEG, GIF, WebP and AVIF files
+   * inside sourceDir.
    */
   include?: string | string[];
   /**
