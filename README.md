@@ -2,86 +2,86 @@
 
 ![npm](https://img.shields.io/npm/v/vite-plugin-replace-image-url) ![license](https://img.shields.io/npm/l/vite-plugin-replace-image-url)
 
-A vite plugin which replace images url.
+A Vite plugin that maps imported images from one source directory to external URLs at build time without emitting those images.
 
 [English](README.md) | [中文](README_CN.md)
 
-## Table of Contents
+## Installation
 
-1.  [Installation](#installation)
-2.  [Usage](#usage)
-3.  [Issues](#issues)
-4.  [License](#license)
-
-### Installation
-
-<a name="installation"></a>
+Supports Vite 3 and later. Requires Node.js 18 or later. This package is ESM only.
 
 ```bash
-  # npm
-  npm i vite-plugin-replace-image-url -D
-
-  # yarn
-  yarn add vite-plugin-replace-image-url -D
-
-  # pnpm
-  pnpm add vite-plugin-replace-image-url -D
+pnpm add vite-plugin-replace-image-url -D
 ```
 
-### Usage
+## Usage
 
-<a name="usage"></a>
-
-Here's an example vite config illustrating how to use this plugin
-
-**vite.config.js**
 ```js
-import replaceImageUrl from 'vite-plugin-replace-image-url';
-export default {
-  plugins: [replaceImageUrl()],
-}
+import { defineConfig } from "vite";
+import ReplaceImageUrl from "vite-plugin-replace-image-url";
+
+export default defineConfig({
+  plugins: [
+    ReplaceImageUrl({
+      publicPath: "https://cdn.example.com/images",
+      sourceDir: "src/static",
+    }),
+  ],
+});
 ```
-<h2 align="center">Options</h2>
 
-You can pass a hash of configuration options to `vite-plugin-replace-image-url`.
-Allowed values are as follows:
+An import such as `src/static/icons/logo.png` is replaced during a production build with:
 
-|Name|Type|Default|Description|
-|:--:|:--:|:-----:|:----------|
-|**`publicPath`**|`{string}`|`''`|A path which added in front of filenames.|
-|**`sourceDir`**|`{string}`|`'src/static'`|The path where the picture is located.|
-|**`include`**|`{string \| Array<string>}`|`['**/*.svg', '**/*.png', '**/*.jp(e)?g', '**/*.gif', '**/*.webp']`|A picomatch pattern, or array of patterns, which specifies the files in the build the plugin should operate on.|
-|**`exclude`**|`{string \| Array<string>}`|`[]`|A picomatch pattern, or array of patterns, which specifies the files in the build the plugin should ignore.|
-|**`verbose`**|`{boolean}`|`false`|Write logs to console.|
+```text
+https://cdn.example.com/images/icons/logo.png
+```
 
-Here's an example vite config illustrating how to use these options
+The image is not emitted into the Vite build output. Development server behavior is unchanged because the plugin only runs during `vite build`.
 
-**vite.config.js**
+## Options
+
+| Name | Type | Default | Description |
+| --- | --- | --- | --- |
+| `publicPath` | `string` | `""` | Path or URL prepended to each image path |
+| `sourceDir` | `string` | `"src/static"` | Image directory, resolved relative to Vite's `root` |
+| `include` | `string \| string[]` | Common SVG, PNG, JPEG, GIF, WebP and AVIF patterns | Included image patterns |
+| `exclude` | `string \| string[]` | `[]` | Excluded image patterns |
+| `verbose` | `boolean` | `false` | Log a summary of replaced image URLs |
+
+Only files inside `sourceDir` can be replaced. `?url` imports are supported. Explicit `?raw` and `?inline` imports retain Vite's native behavior.
+
 ```js
-import replaceImageUrl from 'vite-plugin-replace-image-url';
-export default {
-  plugins: [replaceImageUrl(
-    {
-      publicPath: VITE_CDN_URL,
-      sourceDir: path.resolve(__dirname, './src/static'),
-      include: ['**/*.svg', '**/*.png', '**/*.jp(e)?g', '**/*.gif', '**/*.webp'],
-      exclude: ['**/logo.png'],
-      verbose: true,
-    }
-  )],
-}
+ReplaceImageUrl({
+  publicPath: "https://cdn.example.com/images/",
+  sourceDir: "src/static",
+  include: ["**/*.{png,jpg,jpeg,webp,avif}"],
+  exclude: ["**/logo.png"],
+  verbose: true,
+});
 ```
 
-### Issues
+Verbose output follows Vite's logger:
 
-<a name="issues"></a>
+```text
+[vite-plugin-replace-image-url] Replaced 2 image URLs:
+  - icons/menu.png -> https://cdn.example.com/images/icons/menu.png
+  - banner/home.webp -> https://cdn.example.com/images/banner/home.webp
+```
 
-If you encounter some problems during use, please click here [Issue Report](https://github.com/oyjt/vite-plugin-replace-image-url/issues)
+## Why a Vite plugin?
 
-### License
+Vite's `base` option is the simpler choice when every built asset should use the same public prefix. This plugin is Vite-specific because it uses Vite's resolved `root`, logger, filtering utilities, build-only application and pre-enforced asset loading to replace only selected imported images while preventing their emission.
 
-<a name="license"></a>
+## Changelog
 
-[MIT License](https://github.com/oyjt/vite-plugin-replace-image-url/blob/master/LICENSE)
+See [CHANGELOG.md](https://github.com/oyjt/vite-plugin-replace-image-url/blob/main/CHANGELOG.md).
+
+## Issues
+
+Report bugs or request features in [GitHub Issues](https://github.com/oyjt/vite-plugin-replace-image-url/issues).
+
+## License
+
+[MIT License](https://github.com/oyjt/vite-plugin-replace-image-url/blob/main/LICENSE)
 
 Copyright (c) 2023-present cnpath
