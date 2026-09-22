@@ -49,6 +49,7 @@ const mockLogger = t => {
   return {
     logger,
     info: t.mock.method(logger, "info", () => {}),
+    error: t.mock.method(logger, "error", () => {}),
   };
 };
 
@@ -75,32 +76,38 @@ console.log(logo, outside, inline);`,
   assert.match(code, /data:image\/png;base64/);
 });
 
-test("supports relative output URLs in imports and source references", async t => {
-  const root = await fixture(
-    t,
-    'import "./styles.css";',
-  );
-  await writeFile(
-    path.join(root, "index.html"),
-    '<img src="./src/static/nested/logo.png">' +
-      '<script type="module" src="/src/main.js"></script>',
-  );
-  await writeFile(
-    path.join(root, "src/styles.css"),
-    'body { background: url("./static/nested/logo.png"); }',
-  );
+for (const [name, publicPath, expectedUrl] of [
+  ["relative output URLs", "../images", "../images/nested/logo.png"],
+  [
+    "absolute CDN URLs",
+    "https://cdn.example.com/images",
+    "https://cdn.example.com/images/nested/logo.png",
+  ],
+]) {
+  test(`replaces relative HTML and CSS references with ${name}`, async t => {
+    const root = await fixture(
+      t,
+      'import "./styles.css";',
+    );
+    await writeFile(
+      path.join(root, "index.html"),
+      '<img src="./src/static/nested/logo.png">' +
+        '<script type="module" src="/src/main.js"></script>',
+    );
+    await writeFile(
+      path.join(root, "src/styles.css"),
+      'body { background: url("./static/nested/logo.png"); }',
+    );
 
-  const output = await bundle(
-    root,
-    ReplaceImageUrl({ publicPath: "../images" }),
-  );
+    const output = await bundle(
+      root,
+      ReplaceImageUrl({ publicPath }),
+    );
 
-  assert.equal(
-    output.match(/\.\.\/images\/nested\/logo\.png/g)?.length,
-    2,
-  );
-  assert.doesNotMatch(output, /vite-plugin-replace-image-url\.invalid/);
-});
+    assert.equal(output.split(expectedUrl).length - 1, 2);
+    assert.doesNotMatch(output, /vite-plugin-replace-image-url\.invalid/);
+  });
+}
 
 test("supports custom sourceDir, filters, and safe JavaScript output", async t => {
   const root = await fixture(
@@ -152,4 +159,30 @@ test("verbose logging reports when no images match", async t => {
   assert.deepEqual(pluginLogs(info), [
     "[vite-plugin-replace-image-url] No matching images found.",
   ]);
+});
+
+
+test("silent suppresses plugin error and verbose logs", async t => {
+  const root = await fixture(
+    t,
+    `import logo from "./static/nested/logo.png";
+console.log(logo);`,
+  );
+
+  const noisy = mockLogger(t);
+  await bundle(
+    root,
+    ReplaceImageUrl({ publicPath: null }),
+    noisy.logger,
+  );
+  assert.equal(pluginLogs(noisy.error).length, 1);
+
+  const quiet = mockLogger(t);
+  await bundle(
+    root,
+    ReplaceImageUrl({ publicPath: null, verbose: true, silent: true }),
+    quiet.logger,
+  );
+  assert.deepEqual(pluginLogs(quiet.info), []);
+  assert.deepEqual(pluginLogs(quiet.error), []);
 });
