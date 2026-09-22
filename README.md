@@ -48,7 +48,7 @@ The image is not emitted into the Vite build output. Development server behavior
 | `exclude` | `string \| string[]` | `[]` | Excluded image patterns |
 | `verbose` | `boolean` | `false` | Log a summary of replaced image URLs |
 
-Only files inside `sourceDir` can be replaced. `?url` imports are supported. Explicit `?raw` and `?inline` imports retain Vite's native behavior.
+Only files inside `sourceDir` can be replaced. `?url` imports are supported. Explicit `?raw` and `?inline` imports retain Vite's native behavior. Relative output prefixes such as `./images` and `../images` are supported. Relative image references in HTML `src`/`poster` attributes and CSS `url()` values are also replaced.
 
 ```js
 ReplaceImageUrl({
