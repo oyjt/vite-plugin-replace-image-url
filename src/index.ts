@@ -6,10 +6,28 @@ import type { ConfigOptions } from "./typing";
 
 const pluginName = "vite-plugin-replace-image-url";
 const markerPrefix = "https://vite-plugin-replace-image-url.invalid/";
+const markerRE = new RegExp(`${markerPrefix}([A-Za-z0-9_-]+)`, "g");
 const defaultInclude = ["**/*.{svg,png,jpg,jpeg,gif,webp,avif}"];
 const styleRE = /\.(?:css|less|s[ac]ss|styl(?:us)?)$/;
 const cssUrlRE = /url\(\s*(["']?)([^"')]+)\1\s*\)/g;
 const htmlUrlRE = /\b(src|poster)\s*=\s*(["'])([^"']+)\2/g;
+
+const parseRequest = (id: string): [string, URLSearchParams] => {
+  const queryIndex = id.indexOf("?");
+  const filePath = queryIndex === -1 ? id : id.slice(0, queryIndex);
+  const query = queryIndex === -1 ? "" : id.slice(queryIndex + 1);
+  return [filePath, new URLSearchParams(query)];
+};
+
+// Vite rewrites relative HTML/CSS URLs. Use absolute markers during its
+// transforms, then restore the requested URL after the bundle is generated.
+const toMarker = (url: string): string =>
+  `${markerPrefix}${Buffer.from(url).toString("base64url")}`;
+
+const finalizeMarkers = (source: string): string =>
+  source.replace(markerRE, (_match, encoded: string) =>
+    Buffer.from(encoded, "base64url").toString(),
+  );
 
 const replaceImageUrl = ({
   publicPath = "",
@@ -21,6 +39,7 @@ const replaceImageUrl = ({
 }: ConfigOptions = {}): Plugin[] => {
   const filter = createFilter(include, exclude);
   const replacedImages = new Map<string, string>();
+  const normalizedPublicPath = publicPath.replace(/\/+$/, "");
   let resolvedRoot: string;
   let resolvedSourceDir: string;
   let logger: Logger;
@@ -45,7 +64,6 @@ const replaceImageUrl = ({
     }
 
     const normalizedPath = normalizePath(relativePath);
-    const normalizedPublicPath = publicPath.replace(/\/+$/, "");
     const outputUrl = `${normalizedPublicPath}/${normalizedPath}`;
     replacedImages.set(normalizedPath, outputUrl);
     return outputUrl;
@@ -83,15 +101,6 @@ const replaceImageUrl = ({
     return outputUrl === null ? null : `${outputUrl}${suffix}`;
   };
 
-  const toMarker = (url: string): string =>
-    `${markerPrefix}${Buffer.from(url).toString("base64url")}`;
-
-  const finalizeMarkers = (source: string): string =>
-    source.replace(
-      new RegExp(`${markerPrefix}([A-Za-z0-9_-]+)`, "g"),
-      (_match, encoded: string) => Buffer.from(encoded, "base64url").toString(),
-    );
-
   const replacePlugin: Plugin = {
     name: pluginName,
     enforce: "pre",
@@ -105,28 +114,16 @@ const replaceImageUrl = ({
       replacedImages.clear();
     },
     load(id) {
-      try {
-        const queryIndex = id.indexOf("?");
-        const filePath = queryIndex === -1 ? id : id.slice(0, queryIndex);
-        const query = queryIndex === -1 ? "" : id.slice(queryIndex + 1);
-        const searchParams = new URLSearchParams(query);
+      const [filePath, searchParams] = parseRequest(id);
+      if (searchParams.has("raw") || searchParams.has("inline")) return null;
 
-        if (searchParams.has("raw") || searchParams.has("inline")) return null;
-
-        const outputUrl = getOutputUrl(filePath);
-        return outputUrl === null
-          ? null
-          : `export default ${JSON.stringify(outputUrl)}`;
-      } catch (error: unknown) {
-        logError(`Failed to replace image URL for ${id}`, error);
-        return null;
-      }
+      const outputUrl = getOutputUrl(filePath);
+      return outputUrl === null
+        ? null
+        : `export default ${JSON.stringify(outputUrl)}`;
     },
     transform(code, id) {
-      const queryIndex = id.indexOf("?");
-      const filePath = queryIndex === -1 ? id : id.slice(0, queryIndex);
-      const query = queryIndex === -1 ? "" : id.slice(queryIndex + 1);
-      const searchParams = new URLSearchParams(query);
+      const [filePath, searchParams] = parseRequest(id);
       if (!styleRE.test(filePath) && searchParams.get("type") !== "style") {
         return null;
       }
@@ -174,14 +171,10 @@ const replaceImageUrl = ({
     enforce: "post",
     apply: "build",
     generateBundle(_options, bundle) {
-      try {
-        for (const output of Object.values(bundle)) {
-          if (output.type === "asset" && typeof output.source === "string") {
-            output.source = finalizeMarkers(output.source);
-          }
+      for (const output of Object.values(bundle)) {
+        if (output.type === "asset" && typeof output.source === "string") {
+          output.source = finalizeMarkers(output.source);
         }
-      } catch (error: unknown) {
-        logError("Failed to finalize image URLs", error);
       }
     },
   };
