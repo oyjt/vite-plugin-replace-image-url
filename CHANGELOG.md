@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0 (Unreleased / 未发布)
+## 2.0.0 (2026-09-22)
 
 ### Breaking changes
 
