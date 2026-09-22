@@ -37,9 +37,7 @@ async function bundle(root, plugin, customLogger) {
       write: false,
     },
   });
-  const outputs = Array.isArray(result) ? result : [result];
-  return outputs
-    .flatMap(output => output.output)
+  return result.output
     .map(output => output.type === "chunk" ? output.code : String(output.source))
     .join("\n");
 }
@@ -161,28 +159,22 @@ test("verbose logging reports when no images match", async t => {
   ]);
 });
 
-
 test("silent suppresses plugin error and verbose logs", async t => {
-  const root = await fixture(
-    t,
-    `import logo from "./static/nested/logo.png";
-console.log(logo);`,
-  );
+  const root = process.cwd();
+  const html = '<img src="./src/static/%E0%A4%A.png">';
+  const context = { filename: path.join(root, "index.html") };
 
   const noisy = mockLogger(t);
-  await bundle(
-    root,
-    ReplaceImageUrl({ publicPath: null }),
-    noisy.logger,
-  );
+  const [noisyPlugin] = ReplaceImageUrl();
+  noisyPlugin.configResolved({ root, logger: noisy.logger });
+  noisyPlugin.transformIndexHtml.handler(html, context);
   assert.equal(pluginLogs(noisy.error).length, 1);
 
   const quiet = mockLogger(t);
-  await bundle(
-    root,
-    ReplaceImageUrl({ publicPath: null, verbose: true, silent: true }),
-    quiet.logger,
-  );
+  const [quietPlugin] = ReplaceImageUrl({ verbose: true, silent: true });
+  quietPlugin.configResolved({ root, logger: quiet.logger });
+  quietPlugin.transformIndexHtml.handler(html, context);
+  quietPlugin.buildEnd();
   assert.deepEqual(pluginLogs(quiet.info), []);
   assert.deepEqual(pluginLogs(quiet.error), []);
 });
