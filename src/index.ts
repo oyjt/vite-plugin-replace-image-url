@@ -17,12 +17,19 @@ const replaceImageUrl = ({
   include = defaultInclude,
   exclude = [],
   verbose = false,
+  silent = false,
 }: ConfigOptions = {}): Plugin[] => {
   const filter = createFilter(include, exclude);
   const replacedImages = new Map<string, string>();
   let resolvedRoot: string;
   let resolvedSourceDir: string;
   let logger: Logger;
+
+  const logError = (context: string, error: unknown): void => {
+    if (silent) return;
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[${pluginName}] ${context}: ${message}`);
+  };
 
   const getOutputUrl = (filePath: string): string | null => {
     if (!filter(normalizePath(filePath))) return null;
@@ -64,7 +71,8 @@ const replaceImageUrl = ({
     let decodedPath: string;
     try {
       decodedPath = decodeURIComponent(pathname);
-    } catch {
+    } catch (error: unknown) {
+      logError(`Failed to decode image URL ${url}`, error);
       return null;
     }
 
@@ -97,17 +105,22 @@ const replaceImageUrl = ({
       replacedImages.clear();
     },
     load(id) {
-      const queryIndex = id.indexOf("?");
-      const filePath = queryIndex === -1 ? id : id.slice(0, queryIndex);
-      const query = queryIndex === -1 ? "" : id.slice(queryIndex + 1);
-      const searchParams = new URLSearchParams(query);
+      try {
+        const queryIndex = id.indexOf("?");
+        const filePath = queryIndex === -1 ? id : id.slice(0, queryIndex);
+        const query = queryIndex === -1 ? "" : id.slice(queryIndex + 1);
+        const searchParams = new URLSearchParams(query);
 
-      if (searchParams.has("raw") || searchParams.has("inline")) return null;
+        if (searchParams.has("raw") || searchParams.has("inline")) return null;
 
-      const outputUrl = getOutputUrl(filePath);
-      return outputUrl === null
-        ? null
-        : `export default ${JSON.stringify(outputUrl)}`;
+        const outputUrl = getOutputUrl(filePath);
+        return outputUrl === null
+          ? null
+          : `export default ${JSON.stringify(outputUrl)}`;
+      } catch (error: unknown) {
+        logError(`Failed to replace image URL for ${id}`, error);
+        return null;
+      }
     },
     transform(code, id) {
       const queryIndex = id.indexOf("?");
@@ -139,7 +152,7 @@ const replaceImageUrl = ({
       },
     },
     buildEnd(error) {
-      if (error || !verbose) return;
+      if (error || !verbose || silent) return;
 
       if (replacedImages.size === 0) {
         logger.info(`[${pluginName}] No matching images found.`);
@@ -161,10 +174,14 @@ const replaceImageUrl = ({
     enforce: "post",
     apply: "build",
     generateBundle(_options, bundle) {
-      for (const output of Object.values(bundle)) {
-        if (output.type === "asset" && typeof output.source === "string") {
-          output.source = finalizeMarkers(output.source);
+      try {
+        for (const output of Object.values(bundle)) {
+          if (output.type === "asset" && typeof output.source === "string") {
+            output.source = finalizeMarkers(output.source);
+          }
         }
+      } catch (error: unknown) {
+        logError("Failed to finalize image URLs", error);
       }
     },
   };
