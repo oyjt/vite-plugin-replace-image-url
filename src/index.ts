@@ -1,10 +1,15 @@
 import path from "node:path";
+import { Buffer } from "node:buffer";
 import { createFilter, normalizePath } from "vite";
 import type { Logger, Plugin } from "vite";
 import type { ConfigOptions } from "./typing";
 
 const pluginName = "vite-plugin-replace-image-url";
+const markerPrefix = "https://vite-plugin-replace-image-url.invalid/";
 const defaultInclude = ["**/*.{svg,png,jpg,jpeg,gif,webp,avif}"];
+const styleRE = /\.(?:css|less|s[ac]ss|styl(?:us)?)$/;
+const cssUrlRE = /url\(\s*(["']?)([^"')]+)\1\s*\)/g;
+const htmlUrlRE = /\b(src|poster)\s*=\s*(["'])([^"']+)\2/g;
 
 const replaceImageUrl = ({
   publicPath = "",
@@ -12,18 +17,80 @@ const replaceImageUrl = ({
   include = defaultInclude,
   exclude = [],
   verbose = false,
-}: ConfigOptions = {}): Plugin => {
+}: ConfigOptions = {}): Plugin[] => {
   const filter = createFilter(include, exclude);
   const replacedImages = new Map<string, string>();
+  let resolvedRoot: string;
   let resolvedSourceDir: string;
   let logger: Logger;
 
-  return {
+  const getOutputUrl = (filePath: string): string | null => {
+    if (!filter(normalizePath(filePath))) return null;
+
+    const relativePath = path.relative(resolvedSourceDir, filePath);
+    if (
+      relativePath === "" ||
+      relativePath.startsWith(`..${path.sep}`) ||
+      relativePath === ".." ||
+      path.isAbsolute(relativePath)
+    ) {
+      return null;
+    }
+
+    const normalizedPath = normalizePath(relativePath);
+    const normalizedPublicPath = publicPath.replace(/\/+$/, "");
+    const outputUrl = `${normalizedPublicPath}/${normalizedPath}`;
+    replacedImages.set(normalizedPath, outputUrl);
+    return outputUrl;
+  };
+
+  const replaceSourceUrl = (url: string, importer: string): string | null => {
+    if (
+      url.startsWith("#") ||
+      url.startsWith("//") ||
+      /^[a-z][a-z\d+.-]*:/i.test(url) ||
+      url.startsWith("var(")
+    ) {
+      return null;
+    }
+
+    const suffixIndex = url.search(/[?#]/);
+    const pathname = suffixIndex === -1 ? url : url.slice(0, suffixIndex);
+    const suffix = suffixIndex === -1 ? "" : url.slice(suffixIndex);
+    const query = suffix.startsWith("?") ? suffix.slice(1).split("#", 1)[0] : "";
+    const searchParams = new URLSearchParams(query);
+    if (searchParams.has("raw") || searchParams.has("inline")) return null;
+
+    let decodedPath: string;
+    try {
+      decodedPath = decodeURIComponent(pathname);
+    } catch {
+      return null;
+    }
+
+    const filePath = decodedPath.startsWith("/")
+      ? path.resolve(resolvedRoot, `.${decodedPath}`)
+      : path.resolve(path.dirname(importer), decodedPath);
+    const outputUrl = getOutputUrl(filePath);
+    return outputUrl === null ? null : `${outputUrl}${suffix}`;
+  };
+
+  const toMarker = (url: string): string =>
+    `${markerPrefix}${Buffer.from(url).toString("base64url")}`;
+
+  const finalizeMarkers = (source: string): string =>
+    source.replace(
+      new RegExp(`${markerPrefix}([A-Za-z0-9_-]+)`, "g"),
+      (_match, encoded: string) => Buffer.from(encoded, "base64url").toString(),
+    );
+
+  const replacePlugin: Plugin = {
     name: pluginName,
     enforce: "pre",
     apply: "build",
     configResolved(config) {
       logger = config.logger;
+      resolvedRoot = config.root;
       resolvedSourceDir = path.resolve(config.root, sourceDir);
     },
     buildStart() {
@@ -36,24 +103,40 @@ const replaceImageUrl = ({
       const searchParams = new URLSearchParams(query);
 
       if (searchParams.has("raw") || searchParams.has("inline")) return null;
-      if (!filter(normalizePath(filePath))) return null;
 
-      const relativePath = path.relative(resolvedSourceDir, filePath);
-      if (
-        relativePath === "" ||
-        relativePath.startsWith(`..${path.sep}`) ||
-        relativePath === ".." ||
-        path.isAbsolute(relativePath)
-      ) {
+      const outputUrl = getOutputUrl(filePath);
+      return outputUrl === null
+        ? null
+        : `export default ${JSON.stringify(outputUrl)}`;
+    },
+    transform(code, id) {
+      const queryIndex = id.indexOf("?");
+      const filePath = queryIndex === -1 ? id : id.slice(0, queryIndex);
+      const query = queryIndex === -1 ? "" : id.slice(queryIndex + 1);
+      const searchParams = new URLSearchParams(query);
+      if (!styleRE.test(filePath) && searchParams.get("type") !== "style") {
         return null;
       }
 
-      const normalizedPath = normalizePath(relativePath);
-      const normalizedPublicPath = publicPath.replace(/\/+$/, "");
-      const outputUrl = `${normalizedPublicPath}/${normalizedPath}`;
-
-      replacedImages.set(normalizedPath, outputUrl);
-      return `export default ${JSON.stringify(outputUrl)}`;
+      let changed = false;
+      const transformed = code.replace(cssUrlRE, (match, quote, url) => {
+        const outputUrl = replaceSourceUrl(url, filePath);
+        if (outputUrl === null) return match;
+        changed = true;
+        return `url(${quote}${toMarker(outputUrl)}${quote})`;
+      });
+      return changed ? { code: transformed, map: null } : null;
+    },
+    transformIndexHtml: {
+      order: "pre",
+      handler(html, context) {
+        return html.replace(htmlUrlRE, (match, attribute, quote, url) => {
+          const outputUrl = replaceSourceUrl(url, context.filename);
+          return outputUrl === null
+            ? match
+            : `${attribute}=${quote}${toMarker(outputUrl)}${quote}`;
+        });
+      },
     },
     buildEnd(error) {
       if (error || !verbose) return;
@@ -72,6 +155,21 @@ const replaceImageUrl = ({
       );
     },
   };
+
+  const finalizePlugin: Plugin = {
+    name: `${pluginName}:finalize`,
+    enforce: "post",
+    apply: "build",
+    generateBundle(_options, bundle) {
+      for (const output of Object.values(bundle)) {
+        if (output.type === "asset" && typeof output.source === "string") {
+          output.source = finalizeMarkers(output.source);
+        }
+      }
+    },
+  };
+
+  return [replacePlugin, finalizePlugin];
 };
 
 export type { ConfigOptions } from "./typing";
