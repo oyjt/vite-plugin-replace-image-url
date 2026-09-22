@@ -2,86 +2,86 @@
 
 ![npm](https://img.shields.io/npm/v/vite-plugin-replace-image-url) ![license](https://img.shields.io/npm/l/vite-plugin-replace-image-url)
 
-一个替换图片url的vite插件。
+一个在构建阶段将指定源目录中的图片映射为外部 URL，并阻止这些图片进入构建产物的 Vite 插件。
 
 [English](README.md) | [中文](README_CN.md)
 
-## 内容目录
+## 安装
 
-1.  [安装](#installation)
-2.  [使用](#usage)
-3.  [问题](#issues)
-4.  [使用许可](#license)
-
-### 安装
-
-<a name="installation"></a>
+支持 Vite 3 及更高版本，要求 Node.js 18 或更高版本，仅支持 ESM。
 
 ```bash
-  # npm
-  npm i vite-plugin-replace-image-url -D
-
-  # yarn
-  yarn add vite-plugin-replace-image-url -D
-
-  # pnpm
-  pnpm add vite-plugin-replace-image-url -D
+pnpm add vite-plugin-replace-image-url -D
 ```
 
-### 使用
+## 使用
 
-<a name="usage"></a>
-
-这是一个 vite 配置示例，说明了如何使用此插件
-
-**vite.config.js**
 ```js
-import replaceImageUrl from 'vite-plugin-replace-image-url';
-export default {
-  plugins: [replaceImageUrl()],
-}
+import { defineConfig } from "vite";
+import ReplaceImageUrl from "vite-plugin-replace-image-url";
+
+export default defineConfig({
+  plugins: [
+    ReplaceImageUrl({
+      publicPath: "https://cdn.example.com/images",
+      sourceDir: "src/static",
+    }),
+  ],
+});
 ```
-<h2 align="center">配置项</h2>
 
-您可以将配置选项值传给`vite-plugin-replace-image-url`。
-允许的值如下：
+例如，导入 `src/static/icons/logo.png` 时，生产构建结果会替换为：
 
-|名称|类型|默认值|描述|
-|:--:|:--:|:-----:|:----------|
-|**`publicPath`**|`{string}`|`''`|添加在文件名前面的路径|
-|**`sourceDir`**|`{string}`|`'src/static'`|图片所在的路径|
-|**`include`**|`{string \| Array<string>}`|`[]`|picomatch 模式或模式数组，用于指定插件应在构建文件中运行的文件|
-|**`exclude`**|`{string \| Array<string>}`|`[]`|picomatch 模式或模式数组，用于指定插件应忽略的构建文件|
-|**`verbose`**|`{boolean}`|`false`|将日志写入控制台|
+```text
+https://cdn.example.com/images/icons/logo.png
+```
 
-这是一个示例 vite 配置，说明了如何使用这些选项
+图片不会写入 Vite 构建产物。插件只在 `vite build` 时运行，不改变开发服务器行为。
 
-**vite.config.js**
+## 配置项
+
+| 名称 | 类型 | 默认值 | 描述 |
+| --- | --- | --- | --- |
+| `publicPath` | `string` | `""` | 添加到图片相对路径前的路径或 URL |
+| `sourceDir` | `string` | `"src/static"` | 图片源目录，相对 Vite `root` 解析 |
+| `include` | `string \| string[]` | 常见 SVG、PNG、JPEG、GIF、WebP、AVIF 规则 | 包含的图片规则 |
+| `exclude` | `string \| string[]` | `[]` | 排除的图片规则 |
+| `verbose` | `boolean` | `false` | 输出已替换图片 URL 汇总 |
+
+只有 `sourceDir` 内的文件会被替换。支持 `?url`，显式使用 `?raw` 或 `?inline` 时保留 Vite 原生行为。
+
 ```js
-import replaceImageUrl from 'vite-plugin-replace-image-url';
-export default {
-  plugins: [replaceImageUrl(
-    {
-      publicPath: VITE_CDN_URL,
-      sourceDir: path.resolve(__dirname, './src/static'),
-      include: ['**/*.svg', '**/*.png', '**/*.jp(e)?g', '**/*.gif', '**/*.webp'],
-      exclude: ['**/logo.png'],
-      verbose: true,
-    }
-  )],
-}
+ReplaceImageUrl({
+  publicPath: "https://cdn.example.com/images/",
+  sourceDir: "src/static",
+  include: ["**/*.{png,jpg,jpeg,webp,avif}"],
+  exclude: ["**/logo.png"],
+  verbose: true,
+});
 ```
 
-### 问题
+详细日志使用 Vite logger，格式如下：
 
-<a name="issues"></a>
+```text
+[vite-plugin-replace-image-url] Replaced 2 image URLs:
+  - icons/menu.png -> https://cdn.example.com/images/icons/menu.png
+  - banner/home.webp -> https://cdn.example.com/images/banner/home.webp
+```
 
-如果您在使用过程中遇到问题，请点击这里 [问题反馈](https://github.com/oyjt/vite-plugin-replace-image-url/issues)
+## 为什么需要 Vite 插件
 
-### 使用许可
+如果所有构建资源只需要统一增加公共前缀，应优先使用 Vite 原生 `base`。本插件使用 Vite 最终解析的 `root`、logger、过滤工具、构建阶段控制和资源加载顺序，只替换指定图片并阻止其写入构建产物，因此属于 Vite 专用插件。
 
-<a name="license"></a>
+## 更新日志
 
-[MIT License](https://github.com/oyjt/vite-plugin-replace-image-url/blob/master/LICENSE)
+版本变更与迁移说明见 [CHANGELOG.md](https://github.com/oyjt/vite-plugin-replace-image-url/blob/main/CHANGELOG.md)。
+
+## 问题反馈
+
+遇到问题或有功能建议，请提交 [GitHub Issue](https://github.com/oyjt/vite-plugin-replace-image-url/issues)。
+
+## 使用许可
+
+[MIT License](https://github.com/oyjt/vite-plugin-replace-image-url/blob/main/LICENSE)
 
 Copyright (c) 2023-present cnpath
