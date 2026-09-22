@@ -29,4 +29,10 @@ export interface ConfigOptions {
    * @default false
    */
   verbose?: boolean;
+  /**
+   * Disable all plugin logs, including errors. Takes precedence over verbose.
+   *
+   * @default false
+   */
+  silent?: boolean;
 }
