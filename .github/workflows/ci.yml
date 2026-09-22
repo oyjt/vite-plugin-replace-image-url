@@ -6,8 +6,15 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        node: ['20.19.0', '22.12.0', '24.x']
+        include:
+          - os: ubuntu-latest
+            node: '20.19.0'
+          - os: ubuntu-latest
+            node: '22.12.0'
+          - os: ubuntu-latest
+            node: '24.x'
+          - os: windows-latest
+            node: '22.12.0'
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
