@@ -47,8 +47,9 @@ The image is not emitted into the Vite build output. Development server behavior
 | `include` | `string \| string[]` | Common SVG, PNG, JPEG, GIF, WebP and AVIF patterns | Included image patterns |
 | `exclude` | `string \| string[]` | `[]` | Excluded image patterns |
 | `verbose` | `boolean` | `false` | Log a summary of replaced image URLs |
+| `silent` | `boolean` | `false` | Disable all plugin logs, including errors |
 
-Only files inside `sourceDir` can be replaced. `?url` imports are supported. Explicit `?raw` and `?inline` imports retain Vite's native behavior. Relative output prefixes such as `./images` and `../images` are supported. Relative image references in HTML `src`/`poster` attributes and CSS `url()` values are also replaced.
+Only files inside `sourceDir` can be replaced. `?url` imports are supported. Explicit `?raw` and `?inline` imports retain Vite's native behavior. Relative output prefixes such as `./images` and `../images` are supported. Relative image references in HTML `src`/`poster` attributes and CSS `url()` values are also replaced, using either a relative output prefix or an absolute CDN URL from `publicPath`.
 
 ```js
 ReplaceImageUrl({
@@ -59,6 +60,8 @@ ReplaceImageUrl({
   verbose: true,
 });
 ```
+
+`silent` takes precedence over `verbose` and suppresses plugin error logs as well.
 
 Verbose output follows Vite's logger:
 
