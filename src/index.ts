@@ -6,7 +6,8 @@ import type { ConfigOptions } from "./typing";
 
 const pluginName = "vite-plugin-replace-image-url";
 const markerPrefix = "https://vite-plugin-replace-image-url.invalid/";
-const markerRE = new RegExp(`${markerPrefix}([A-Za-z0-9_-]+)`, "g");
+const markerRE =
+  /https:\/\/vite-plugin-replace-image-url\.invalid\/([A-Za-z0-9_-]+)/g;
 const defaultInclude = ["**/*.{svg,png,jpg,jpeg,gif,webp,avif}"];
 const styleRE = /\.(?:css|less|s[ac]ss|styl(?:us)?)$/;
 const cssUrlRE = /url\(\s*(["']?)([^"')]+)\1\s*\)/g;
